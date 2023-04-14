@@ -6,8 +6,9 @@ SpeakLeash post-processor is a Python script that provides various functionaliti
 
 To install the required packages for the SpeakLeash post-processor script, you can use the following command:
 
+```
 python -m pip install -r requirements.txt
-
+```
 
 This command installs the packages listed in the `requirements.txt` file.
 
@@ -20,8 +21,9 @@ It is highly recommended to use virtual environments when working with Python pr
 
 To run the SpeakLeash post-processor script, use the following command:
 
+```
 python main.py [arguments]
-
+```
 
 The script accepts the following command-line arguments:
 
@@ -48,13 +50,15 @@ The script accepts the following command-line arguments:
 
 To generate a sample of a dataset named "example_dataset", use the following command:
 
+```
 python main.py --sample --name example_dataset
-
+```
 
 To calculate metrics for a dataset named "example_dataset", use the following command:
 
+```
 python main.py --metrics --name example_dataset
-
+```
 
 ## Additional Information
 
