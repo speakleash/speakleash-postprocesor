@@ -5,3 +5,4 @@ https://github.com/explosion/spacy-models/releases/download/pl_core_news_md-3.2.
 speakleash
 pyfiglet
 rich
+textstat

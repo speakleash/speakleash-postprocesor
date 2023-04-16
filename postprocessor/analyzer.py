@@ -1,9 +1,11 @@
 from common.functions import log
 from datetime import datetime
+import textstat
 
 class Analyzer(object):
 
     def __init__(self, txt, meta, nlp, index):
+        textstat.set_lang('pl')
         self.txt = txt
         self.meta = meta
         self.nlp = nlp
@@ -37,6 +39,7 @@ class Analyzer(object):
         verb_freq = 0
         adj_freq = 0
         lexical_density = 0
+        gunning_fog = 0
         uniq_words = set()
         words_list = []
 
@@ -101,12 +104,17 @@ class Analyzer(object):
         else:
             lexical_density = 0
 
+        if len(words_list) > 0:
+            gunning_fog = textstat.gunning_fog(self.txt)
+
+
         new_meta["length"] = len(self.txt)
         new_meta["sentences"] = sentences
         new_meta["avg_sentence_length"] = avg_sentence_length
         new_meta["words"] = words
         new_meta["verbs"] = verbs
         new_meta["nouns"] = nouns
+        new_meta["adverbs"] = adverbs
         new_meta["adjecives"] = adjecives
         new_meta["punctuations"] = punctuations
         new_meta["symbols"] = symbols
@@ -117,6 +125,8 @@ class Analyzer(object):
         new_meta["verb_freq"] = verb_freq
         new_meta["adj_freq"] = adj_freq
         new_meta["lexical_density"] = lexical_density
+        new_meta["gunning_fog"] = gunning_fog
+
 
         d = datetime.now() - t1
         elapsed = round(d.microseconds / 1000)

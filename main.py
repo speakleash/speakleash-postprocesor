@@ -34,9 +34,9 @@ if __name__ == '__main__':
     all = True
 
     #Set defaults
-    #args.sample = True
-    #args.metrics = False
-    #args.name = ""
+    args.sample = False
+    args.metrics = True
+    args.name = "1000_novels_corpus_CLARIN-PL"
 
     if args.metrics:
         if not os.path.exists(manifest_dir):
