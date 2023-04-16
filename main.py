@@ -79,6 +79,9 @@ if __name__ == '__main__':
             total_symbols = 0
             total_stopwords = 0
             total_oovs = 0
+            total_adjecives = 0
+            total_adverbs = 0
+
             manifest = d.manifest
 
             ar = Archive(os.path.join(base_dir, "data"))
@@ -105,7 +108,9 @@ if __name__ == '__main__':
                     total_punctuations += meta['punctuations']
                     total_symbols += meta['symbols']
                     total_stopwords += meta['stopwords']
-                    total_oovs += meta['oovs']    
+                    total_oovs += meta['oovs']   
+                    total_adjecives += meta['adjecives']
+                    total_adverbs += meta['adverbs'] 
 
                     ar.add_data(txt, meta = meta)                
 
@@ -133,7 +138,7 @@ if __name__ == '__main__':
                         file_size = os.path.getsize(file_name_zst)
                         os.remove(f)
 
-                stats = {"documents": total_docs, "sentences": total_sentences, "words" : total_words, "nouns" : total_nouns, "verbs" : total_verbs, "characters": total_len, "punctuations" : total_punctuations, "symbols" : total_symbols, 'stopwords': total_stopwords,  'oovs': total_oovs}
+                stats = {"documents": total_docs, "sentences": total_sentences, "words" : total_words, "nouns" : total_nouns, "verbs" : total_verbs, "characters": total_len, "punctuations" : total_punctuations, "symbols" : total_symbols, 'stopwords': total_stopwords,  'oovs': total_oovs, 'adjecives': total_adjecives, 'adverbs': total_adverbs}
                 manifest['stats'] = stats
                 manifest['size'] = file_size
             
