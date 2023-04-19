@@ -10,10 +10,11 @@ import shutil
 import spacy
 from rich import print as rich_print
 from common.functions import log
-from multiprocessing import Pool
+from multiprocessing import Pool, set_start_method
+
 
 def process_doc(doc):
-    counter = doc[0]+1
+    counter = doc[0]
     txt, meta = doc[1]
     analyzer = Analyzer(txt, meta, nlp, counter)
     meta = analyzer.go()
@@ -30,7 +31,9 @@ def initialize_worker():
 
 if __name__ == '__main__':
 
-    VERSION = "0.1.0"
+    set_start_method("spawn")
+
+    VERSION = "0.1.1"
 
     base_dir = os.path.join(os.path.dirname(__file__))
     manifest_dir = os.path.join(base_dir, "manifests")
@@ -45,11 +48,16 @@ if __name__ == '__main__':
     parser.add_argument("--sample", action="store_true", help="Generate sample of dataset")
     parser.add_argument("--metrics", action="store_true", help="Calculate metrics for dataset")
     parser.add_argument("--name", type=str, help="Name of dataset")
+    parser.add_argument("--processes", type=int, help="Number of prcocesses used for metrics counting. Default = os.cpu_count()")
 
     args = parser.parse_args()
 
     all = not args.name
 
+    if not args.processes:
+        args.processes=os.cpu_count()
+
+ 
     #Set defaults
     #args.sample = False
     #args.metrics = True
@@ -100,7 +108,7 @@ if __name__ == '__main__':
 
             if args.metrics:
                 ar = Archive(os.path.join(base_dir, "data"))
-                with Pool(initializer=initialize_worker, processes=os.cpu_count()) as pool:
+                with Pool(initializer=initialize_worker, processes=args.processes) as pool:
                     for txt, meta in pool.imap(func=process_doc, iterable=enumerate(ds), chunksize=1):                         
                         stats['documents'] += 1                        
                         
@@ -112,10 +120,10 @@ if __name__ == '__main__':
                         
 
                         if args.sample:
-                            if counter <= 5:
+                            if counter < 5:
                                 sample.append({"text": txt, "meta": meta})
                 
-                            if counter == 5:
+                            if counter == 4:
                                 with open(os.path.join(base_dir, sample_dir, d.name + ".sample"), "w", encoding = "utf-8") as f:
                                     f.write(json.dumps(sample, ensure_ascii = False ,  indent=4))
 
@@ -129,7 +137,7 @@ if __name__ == '__main__':
 
                     for key in stats.keys():
                         if key in Analyzer.AVG_METRICS_DEF:
-                            stats[key] = stats[key]/stats['documents']
+                            stats[key] = round(stats[key]/stats['documents'],6)
     
                 
                 ar = None
