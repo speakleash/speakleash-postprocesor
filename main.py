@@ -90,15 +90,16 @@ if __name__ == '__main__':
 
             manifest = d.manifest
 
-            ar = Archive(os.path.join(base_dir, "data"))
+            
             file_name_zst = os.path.join(base_dir, d.name + '.zst')
             file_name_manifest = os.path.join(base_dir, d.name + '.manifest') 
 
             counter = 0
             sample = []
-            ds =d.ext_data
+            ds = d.ext_data
 
             if args.metrics:
+                ar = Archive(os.path.join(base_dir, "data"))
                 with Pool(initializer=initialize_worker, processes=os.cpu_count()) as pool:
                     for txt, meta in pool.imap(func=process_doc, iterable=enumerate(ds), chunksize=1):                         
                         stats['documents'] += 1                        
@@ -115,7 +116,7 @@ if __name__ == '__main__':
                                 sample.append({"text": txt, "meta": meta})
                 
                             if counter == 5:
-                                with open(os.path.join(base_dir, sample_dir, d.name + ".sample"), "w") as f:
+                                with open(os.path.join(base_dir, sample_dir, d.name + ".sample"), "w", encoding = "utf-8") as f:
                                     f.write(json.dumps(sample, ensure_ascii = False ,  indent=4))
 
                         counter += 1
@@ -150,23 +151,24 @@ if __name__ == '__main__':
 
             if not args.metrics and args.sample:
                 for i in range(5):
-                    if i <= 5:
+                    if i < 5:
                         sample.append(next(ds))
+                                        
+                    if i == 4:
+                        with open(os.path.join(base_dir, sample_dir, d.name + ".sample"), "w", encoding="utf-8") as f:
+                            f.write(json.dumps(sample, ensure_ascii = False,  indent=4))
                 
-                    if counter == 5:
-                        with open(os.path.join(base_dir, sample_dir, d.name + ".sample"), "w") as f:
-                            f.write(json.dumps(sample, ensure_ascii = False ,  indent=4))
-                
+                ds = None
 
             
-            if os.path.exists(os.path.join(replicate_to, d.name + '.jsonl.zst')):
-                os.remove(os.path.join(replicate_to, d.name + '.jsonl.zst'))
+        if os.path.exists(os.path.join(replicate_to, d.name + '.jsonl.zst')):
+            os.remove(os.path.join(replicate_to, d.name + '.jsonl.zst'))
 
-            if os.path.exists(os.path.join(replicate_to, d.name + '.manifest')):
-                os.remove(os.path.join(replicate_to, d.name + '.manifest'))
- 
-            if os.path.exists(os.path.join('data')):
-                shutil.rmtree(os.path.join('data'))
+        if os.path.exists(os.path.join(replicate_to, d.name + '.manifest')):
+            os.remove(os.path.join(replicate_to, d.name + '.manifest'))
+
+        if os.path.exists(os.path.join('data')):
+            shutil.rmtree(os.path.join('data'))
 
     log("Finished post-processing", "INFO")
     print("")
