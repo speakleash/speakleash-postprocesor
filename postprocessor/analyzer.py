@@ -32,7 +32,7 @@ class Analyzer(object):
         symbols = 0
         stopwords = 0
         oovs = 0
-        adjecives = 0
+        adjectives = 0
         adverbs = 0
         avg_word_length = 0
         avg_sentence_length = 0
@@ -43,7 +43,7 @@ class Analyzer(object):
         lexical_density = 0
         gunning_fog = 0
         uniq_words = set()
-        words_list = []
+        
 
         for token in doc:
             if not token.is_punct and not token.is_stop and not token.is_space:
@@ -56,7 +56,7 @@ class Analyzer(object):
                     verbs += 1
                     uniq_words.add(token.lemma_)
                 elif token.pos_ == "ADJ":
-                    adjecives += 1
+                    adjectives += 1
                     uniq_words.add(token.lemma_)
                 elif token.pos_ == "ADV":
                     adverbs += 1
@@ -70,7 +70,7 @@ class Analyzer(object):
                 punctuations += 1
             elif not token.is_space and not token.pos_ == "SYM":
                 words += 1
-                words_list.append(token.lemma_)
+                
 
         for sentence in doc.sents:
             avg_sentence_length += len(sentence)
@@ -97,16 +97,16 @@ class Analyzer(object):
             verb_ratio = 0   
 
         if words > 0:
-            adj_ratio = adjecives / words
+            adj_ratio = adjectives / words
         else:
             adj_ratio = 0
 
-        if len(words_list) > 0:
-            lexical_density = len(uniq_words) / len(words_list)
+        if words > 0:
+            lexical_density = len(uniq_words) / words
         else:
             lexical_density = 0
 
-        if len(words_list) > 0:
+        if words > 0:
             gunning_fog = textstat.gunning_fog(self.txt)
 
 
@@ -117,7 +117,7 @@ class Analyzer(object):
         new_meta["verbs"] = verbs
         new_meta["nouns"] = nouns
         new_meta["adverbs"] = adverbs
-        new_meta["adjecives"] = adjecives
+        new_meta["adjectives"] = adjectives
         new_meta["punctuations"] = punctuations
         new_meta["symbols"] = symbols
         new_meta["stopwords"] = stopwords

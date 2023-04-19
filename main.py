@@ -25,7 +25,7 @@ def initialize_worker():
     print('Initializing worker...')   
 
     global nlp    
-    nlp = spacy.load("pl_core_news_md", disable=('ner','lemmatizer','textcat','entity_linker'))
+    nlp = spacy.load("pl_core_news_md", disable=('ner','textcat','entity_linker'))
 
 
 
