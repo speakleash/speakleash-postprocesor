@@ -51,7 +51,7 @@ The script accepts the following command-line arguments:
 - Use this argument to specify the number of parallel processes used for calculating metric.
 - This argument requires an integer value representing the number of required processes to spawn.
 - If this argument is omitted, the script will use the value returned by os.cpu_count()
-- The total system memory in GB / os.cpu_count() should not exceed 2GB. Otherwise it may cause system to run out of RAM while processing multiple large documents.
+- The total system memory in GB / os.cpu_count() should exceed 2GB. Otherwise it may cause system to run out of RAM while processing multiple large documents.
 - Example usage: `python main.py --processes 8`
 
 ## Examples
