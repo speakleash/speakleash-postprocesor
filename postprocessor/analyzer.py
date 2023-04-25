@@ -131,8 +131,8 @@ class Analyzer(object):
 
 
         d = datetime.now() - t1
-        elapsed = round(d.microseconds / 1000)
-        log("Processing document (" + str(elapsed) + " ms): " + str(self.index+1) + " " + name, "INFO")
+        elapsed = d.total_seconds()
+        log("Processing document (" + str(elapsed) + " s): " + str(self.index+1) + " " + name, "INFO")
 
         return new_meta
 
