@@ -158,9 +158,12 @@ if __name__ == '__main__':
                     mf.write(json_manifest)
 
             if not args.metrics and args.sample:
+                
+            
                 for i in range(5):
                     if i < 5:
-                        sample.append(next(ds))
+                        txt, meta = next(ds)
+                        sample.append({"text": txt, "meta": meta})
                                         
                     if i == 4:
                         with open(os.path.join(base_dir, sample_dir, d.name + ".sample"), "w", encoding="utf-8") as f:
