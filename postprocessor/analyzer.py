@@ -110,7 +110,7 @@ class Analyzer(object):
             gunning_fog = textstat.gunning_fog(self.txt)
 
 
-        new_meta["length"] = len(self.txt)
+        new_meta["characters"] = len(self.txt)
         new_meta["sentences"] = sentences
         new_meta["avg_sentence_length"] = avg_sentence_length
         new_meta["words"] = words
