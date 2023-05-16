@@ -160,15 +160,15 @@ if __name__ == '__main__':
             if not args.metrics and args.sample:
                 
             
-                for i in range(5):
-                    if i < 5:
-                        txt, meta = next(ds)
-                        sample.append({"text": txt, "meta": meta})
+                for i in range(5):                    
+                    txt, meta = next(ds)
+                    sample.append({"text": txt, "meta": meta})
                                         
-                    if i == 4:
-                        with open(os.path.join(base_dir, sample_dir, d.name + ".sample"), "w", encoding="utf-8") as f:
-                            f.write(json.dumps(sample, ensure_ascii = False,  indent=4))
+                    
+                with open(os.path.join(base_dir, sample_dir, d.name + ".sample"), "w", encoding="utf-8") as f:
+                    f.write(json.dumps(sample, ensure_ascii = False,  indent=4))
                 
+                #Release dataset object to allow delete
                 ds = None
 
             
