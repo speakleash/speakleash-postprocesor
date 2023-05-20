@@ -46,6 +46,14 @@ The script accepts the following command-line arguments:
 - If this argument is omitted, the script will generate samples or calculate metrics for all available datasets.
 - Example usage: `python main.py --name my_dataset`
 
+### `--processes`
+
+- Use this argument to specify the number of parallel processes used for calculating metric.
+- This argument requires an integer value representing the number of required processes to spawn.
+- If this argument is omitted, the script will use the value returned by os.cpu_count()
+- Please not: the total system memory in GB / expected processes number should exceed 2GB. Otherwise it may cause system to run out of RAM while processing multiple large documents.
+- Example usage: `python main.py --processes 8`
+
 ## Examples
 
 To generate a sample of a dataset named "example_dataset", use the following command:

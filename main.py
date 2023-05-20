@@ -10,10 +10,30 @@ import shutil
 import spacy
 from rich import print as rich_print
 from common.functions import log
+from multiprocessing import Pool, set_start_method
+
+
+def process_doc(doc):
+    counter = doc[0]
+    txt, meta = doc[1]
+    analyzer = Analyzer(txt, meta, nlp, counter)
+    meta = analyzer.go()
+    return txt, meta
+
+def initialize_worker():
+
+    print('Initializing worker...')   
+
+    global nlp    
+    nlp = spacy.load("pl_core_news_md", disable=('ner','textcat','entity_linker'))
+
+
 
 if __name__ == '__main__':
 
-    VERSION = "0.1.0"
+    set_start_method("spawn")
+
+    VERSION = "0.1.1"
 
     base_dir = os.path.join(os.path.dirname(__file__))
     manifest_dir = os.path.join(base_dir, "manifests")
@@ -28,15 +48,20 @@ if __name__ == '__main__':
     parser.add_argument("--sample", action="store_true", help="Generate sample of dataset")
     parser.add_argument("--metrics", action="store_true", help="Calculate metrics for dataset")
     parser.add_argument("--name", type=str, help="Name of dataset")
+    parser.add_argument("--processes", type=int, help="Number of prcocesses used for metrics counting. Default = os.cpu_count()")
 
     args = parser.parse_args()
 
-    all = True
+    all = not args.name
 
+    if not args.processes:
+        args.processes=os.cpu_count()
+
+ 
     #Set defaults
-    args.sample = False
-    args.metrics = True
-    args.name = "1000_novels_corpus_CLARIN-PL"
+    #args.sample = False
+    #args.metrics = True
+
 
     if args.metrics:
         if not os.path.exists(manifest_dir):
@@ -62,98 +87,99 @@ if __name__ == '__main__':
 
     print("")
     log("Starting post-processing", "INFO")
-    nlp = spacy.load("pl_core_news_md", disable=('ner','lemmatizer','textcat','entity_linker', 'attribute_ruler'))
+    
     manifest = {}
     sl = Speakleash(replicate_to)
     for d in sl.datasets:
         if all or d.name == args.name:
             log("Processing dataset: " + d.name, "INFO")
 
-            total_len = 0
-            total_docs = 0
-            total_sentences = 0
-            total_words = 0
-            total_verbs = 0
-            total_nouns = 0
-            total_punctuations = 0
-            total_symbols = 0
-            total_stopwords = 0
-            total_oovs = 0
-            total_adjecives = 0
-            total_adverbs = 0
+            stats = {'documents': 0}
 
             manifest = d.manifest
 
-            ar = Archive(os.path.join(base_dir, "data"))
+            
             file_name_zst = os.path.join(base_dir, d.name + '.zst')
             file_name_manifest = os.path.join(base_dir, d.name + '.manifest') 
 
             counter = 0
             sample = []
-            ds =d.ext_data
+            ds = d.ext_data
 
-            for doc in ds:
-                txt, meta = doc
-                
-                if args.metrics:
-                    analyzer = Analyzer(txt, meta, nlp, counter)
-                    meta = analyzer.go()
-
-                    total_words += meta['words']
-                    total_verbs += meta['verbs']
-                    total_nouns += meta['nouns']
-                    total_len += meta['length']
-                    total_docs += 1
-                    total_sentences += meta['sentences']
-                    total_punctuations += meta['punctuations']
-                    total_symbols += meta['symbols']
-                    total_stopwords += meta['stopwords']
-                    total_oovs += meta['oovs']   
-                    total_adjecives += meta['adjecives']
-                    total_adverbs += meta['adverbs'] 
-
-                    ar.add_data(txt, meta = meta)                
-
-                counter += 1
-
-                if args.metrics:
-                    ar.commit()
-                    
-                if args.sample:
-                    if counter <= 5:
-                        sample.append({"text": txt, "meta": meta})
-                
-                    if counter == 5:
-                        with open(os.path.join(base_dir, sample_dir, d.name + ".sample"), "w") as f:
-                            f.write(json.dumps(sample, ensure_ascii = False ,  indent=4))
-    
             if args.metrics:
-                ar = None
-                data_files= glob.glob(os.path.join('data','/*'))
-                file_size = 0
+                ar = Archive(os.path.join(base_dir, "data"))
+                with Pool(initializer=initialize_worker, processes=args.processes) as pool:
+                    for txt, meta in pool.imap(func=process_doc, iterable=enumerate(ds), chunksize=1):                         
+                        stats['documents'] += 1                        
+                        
+                        for key in meta.keys():
+                            if not isinstance(meta[key], str):
+                                stats[key] = stats.setdefault(key, 0) + meta[key]
+                        ar.add_data(txt, meta = meta)                
+
+                        
+
+                        if args.sample:
+                            if counter < 5:
+                                sample.append({"text": txt, "meta": meta})
                 
+                            if counter == 4:
+                                with open(os.path.join(base_dir, sample_dir, d.name + ".sample"), "w", encoding = "utf-8") as f:
+                                    f.write(json.dumps(sample, ensure_ascii = False ,  indent=4))
+
+                        counter += 1
+
+
+
+                    pool.close()
+                    pool.join()
+                    ar.commit()
+
+                    for key in stats.keys():
+                        if key in Analyzer.AVG_METRICS_DEF:
+                            stats[key] = round(stats[key]/stats['documents'],6)
+    
+                
+                ar = None
+                data_files= glob.glob(os.path.join(base_dir,'data','*'))
+                file_size = 0
+
                 for f in data_files:
                     if f.endswith('.zst'):
-                        shutil.copy(f, os.path.join(file_name_zst))
+                        shutil.copy(f, file_name_zst)
                         file_size = os.path.getsize(file_name_zst)
                         os.remove(f)
 
-                stats = {"documents": total_docs, "sentences": total_sentences, "words" : total_words, "nouns" : total_nouns, "verbs" : total_verbs, "characters": total_len, "punctuations" : total_punctuations, "symbols" : total_symbols, 'stopwords': total_stopwords,  'oovs': total_oovs, 'adjecives': total_adjecives, 'adverbs': total_adverbs}
                 manifest['stats'] = stats
-                manifest['size'] = file_size
+                manifest['file_size'] = file_size
             
                 json_manifest = json.dumps(manifest, indent = 4) 
-                with open(os. file_name_manifest, 'w') as mf:
+                with open(file_name_manifest, 'w') as mf:
                     mf.write(json_manifest)
-            
-            if os.path.exists(os.path.join(replicate_to, d.name + '.jsonl.zst')):
-                os.remove(os.path.join(replicate_to, d.name + '.jsonl.zst'))
 
-            if os.path.exists(os.path.join(replicate_to, d.name + '.manifest')):
-                os.remove(os.path.join(replicate_to, d.name + '.manifest'))
- 
-            if os.path.exists(os.path.join('data')):
-                shutil.rmtree(os.path.join('data'))
+            if not args.metrics and args.sample:
+                
+            
+                for i in range(5):                    
+                    txt, meta = next(ds)
+                    sample.append({"text": txt, "meta": meta})
+                                        
+                    
+                with open(os.path.join(base_dir, sample_dir, d.name + ".sample"), "w", encoding="utf-8") as f:
+                    f.write(json.dumps(sample, ensure_ascii = False,  indent=4))
+                
+                #Release dataset object to allow delete
+                ds = None
+
+            
+        if os.path.exists(os.path.join(replicate_to, d.name + '.jsonl.zst')):
+            os.remove(os.path.join(replicate_to, d.name + '.jsonl.zst'))
+
+        if os.path.exists(os.path.join(replicate_to, d.name + '.manifest')):
+            os.remove(os.path.join(replicate_to, d.name + '.manifest'))
+
+        if os.path.exists(os.path.join('data')):
+            shutil.rmtree(os.path.join('data'))
 
     log("Finished post-processing", "INFO")
     print("")
