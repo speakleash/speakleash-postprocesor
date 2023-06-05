@@ -5,6 +5,7 @@ import textstat
 class Analyzer(object):
 
     AVG_METRICS_DEF = ['avg_word_length', 'avg_sentence_length', 'noun_ratio', 'verb_ratio', 'adj_ratio', 'lexical_density', 'gunning_fog']
+    MAX_TEXT_PART = 1024 * 1024 # Max text chunk part 
 
     def __init__(self, txt, meta, nlp, index):
         textstat.set_lang('pl')
@@ -13,6 +14,26 @@ class Analyzer(object):
         self.nlp = nlp
         self.nlp.max_length = len(txt) + 100
         self.index = index
+
+    def _split_text(self):
+        parts = []
+        start = 0
+        end = self.MAX_TEXT_PART
+
+        while start < len(self.txt):
+            if end >= len(self.txt):
+                end = len(self.txt)
+            
+            # Check if the split point is not a space
+            if not self.txt[end-1].isspace() and end < len(self.txt):
+                while not self.txt[end].isspace() and end < len(self.txt):
+                    end += 1
+            
+            parts.append(self.txt[start:end])
+            start = end
+            end += self.MAX_TEXT_PART
+
+        return parts
 
     def go(self):
 
@@ -24,7 +45,7 @@ class Analyzer(object):
 
         new_meta = self.meta
 
-        doc = self.nlp(self.txt)
+        
         words = 0
         verbs = 0
         nouns = 0
@@ -43,38 +64,43 @@ class Analyzer(object):
         lexical_density = 0
         gunning_fog = 0
         uniq_words = set()
+
+        text_parts = self._split_text()
+
+        for part in text_parts:
         
+            doc = self.nlp(part)
 
-        for token in doc:
-            if not token.is_punct and not token.is_stop and not token.is_space:
-                if token.is_oov and not token.pos_ == "SYM":
-                    oovs +=1
-                if token.pos_ == "NOUN":
-                    nouns += 1
-                    uniq_words.add(token.lemma_)
-                elif token.pos_ == "VERB":
-                    verbs += 1
-                    uniq_words.add(token.lemma_)
-                elif token.pos_ == "ADJ":
-                    adjectives += 1
-                    uniq_words.add(token.lemma_)
-                elif token.pos_ == "ADV":
-                    adverbs += 1
-                    uniq_words.add(token.lemma_)
-                avg_word_length += len(token.text)
-            if token.pos_ == "SYM":
-                symbols += 1
-            if token.is_stop:
-                stopwords += 1
-            if token.is_punct:
-                punctuations += 1
-            elif not token.is_space and not token.pos_ == "SYM":
-                words += 1
-                
+            for token in doc:
+                if not token.is_punct and not token.is_stop and not token.is_space:
+                    if token.is_oov and not token.pos_ == "SYM":
+                        oovs +=1
+                    if token.pos_ == "NOUN":
+                        nouns += 1
+                        uniq_words.add(token.lemma_)
+                    elif token.pos_ == "VERB":
+                        verbs += 1
+                        uniq_words.add(token.lemma_)
+                    elif token.pos_ == "ADJ":
+                        adjectives += 1
+                        uniq_words.add(token.lemma_)
+                    elif token.pos_ == "ADV":
+                        adverbs += 1
+                        uniq_words.add(token.lemma_)
+                    avg_word_length += len(token.text)
+                if token.pos_ == "SYM":
+                    symbols += 1
+                if token.is_stop:
+                    stopwords += 1
+                if token.is_punct:
+                    punctuations += 1
+                elif not token.is_space and not token.pos_ == "SYM":
+                    words += 1
+                    
 
-        for sentence in doc.sents:
-            avg_sentence_length += len(sentence)
-            sentences += 1
+            for sentence in doc.sents:
+                avg_sentence_length += len(sentence)
+                sentences += 1
 
         if sentences > 0:
             avg_sentence_length = avg_sentence_length / sentences
@@ -112,7 +138,7 @@ class Analyzer(object):
 
         new_meta["characters"] = len(self.txt)
         new_meta["sentences"] = sentences
-        new_meta["avg_sentence_length"] = avg_sentence_length
+        new_meta["avg_sentence_length"] = round(avg_sentence_length,4)
         new_meta["words"] = words
         new_meta["verbs"] = verbs
         new_meta["nouns"] = nouns
@@ -122,11 +148,11 @@ class Analyzer(object):
         new_meta["symbols"] = symbols
         new_meta["stopwords"] = stopwords
         new_meta["oovs"] = oovs
-        new_meta["avg_word_length"] = avg_word_length
-        new_meta["noun_ratio"] = noun_ratio
-        new_meta["verb_ratio"] = verb_ratio
-        new_meta["adj_ratio"] = adj_ratio
-        new_meta["lexical_density"] = lexical_density
+        new_meta["avg_word_length"] = round(avg_word_length,4)
+        new_meta["noun_ratio"] = round(noun_ratio,4)
+        new_meta["verb_ratio"] = round(verb_ratio,4)
+        new_meta["adj_ratio"] = round(adj_ratio,4)
+        new_meta["lexical_density"] = round(lexical_density,4)
         new_meta["gunning_fog"] = gunning_fog
 
 
