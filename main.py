@@ -41,7 +41,7 @@ if __name__ == '__main__':
     sample_dir = os.path.join(base_dir, "samples")
 
     parser = argparse.ArgumentParser(
-        prog="SpeakLeash post-proceessor",
+        prog="SpeakLeash post-processor",
         description="Application performing post-processing (determining metrics, generating samples, etc.) on SpeakLeash datasets",
     )
 
