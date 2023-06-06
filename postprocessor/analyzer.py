@@ -1,11 +1,14 @@
 from common.functions import log
 from datetime import datetime
 import textstat
+import re
 
 class Analyzer(object):
 
     AVG_METRICS_DEF = ['avg_word_length', 'avg_sentence_length', 'noun_ratio', 'verb_ratio', 'adj_ratio', 'lexical_density', 'gunning_fog']
     MAX_TEXT_PART = 1024 * 1024 # Max text chunk part 
+    CAMEL_CASE_PATTERN = re.compile(r"\b[a-ząęćłńóśżź]+[A-ZĄĘĆŁŃÓŚŻŹ]+[a-ząęćłńóśżź]+[a-ząęćłńóśżźA-ZĄĘĆŁŃÓŚŻŹ]*\b")
+    OBSOLETE_KEYS = ['length'] #A list of obsolete keys to remove from new meta
 
     def __init__(self, txt, meta, nlp, index):
         textstat.set_lang('pl')
@@ -64,6 +67,7 @@ class Analyzer(object):
         lexical_density = 0
         gunning_fog = 0
         uniq_words = set()
+        camel_case = 0
 
         text_parts = self._split_text()
 
@@ -96,6 +100,10 @@ class Analyzer(object):
                     punctuations += 1
                 elif not token.is_space and not token.pos_ == "SYM":
                     words += 1
+                    if re.match(self.CAMEL_CASE_PATTERN,token.text):
+                        camel_case +=1
+                        
+                
                     
 
             for sentence in doc.sents:
@@ -153,7 +161,12 @@ class Analyzer(object):
         new_meta["verb_ratio"] = round(verb_ratio,4)
         new_meta["adj_ratio"] = round(adj_ratio,4)
         new_meta["lexical_density"] = round(lexical_density,4)
-        new_meta["gunning_fog"] = gunning_fog
+        new_meta["gunning_fog"] = round(gunning_fog,4)
+        new_meta["camel_case"] = camel_case
+
+        #Remove obsolete keys from new_meta 
+        for key in self.OBSOLETE_KEYS:
+            new_meta.pop(key,None)
 
 
         d = datetime.now() - t1

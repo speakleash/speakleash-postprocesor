@@ -137,7 +137,11 @@ if __name__ == '__main__':
 
                     for key in stats.keys():
                         if key in Analyzer.AVG_METRICS_DEF:
-                            stats[key] = round(stats[key]/stats['documents'],6)
+                            stats[key] = round(stats[key]/stats['documents'],4)
+                    
+                    #Remove obsolete keys from manifest stats if present
+                    for key in Analyzer.OBSOLETE_KEYS:
+                        stats.pop(key,None)
     
                 
                 ar = None
