@@ -101,10 +101,8 @@ class Analyzer(object):
                 elif not token.is_space and not token.pos_ == "SYM":
                     words += 1
                     if re.match(self.CAMEL_CASE_PATTERN,token.text):
-                        camel_case +=1
-                        
-                
-                    
+                        camel_case +=1                     
+                                        
 
             for sentence in doc.sents:
                 avg_sentence_length += len(sentence)

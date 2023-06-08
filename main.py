@@ -41,7 +41,7 @@ if __name__ == '__main__':
     sample_dir = os.path.join(base_dir, "samples")
 
     parser = argparse.ArgumentParser(
-        prog="SpeakLeash post-processor",
+        prog="SpeakLeash post-proceessor",
         description="Application performing post-processing (determining metrics, generating samples, etc.) on SpeakLeash datasets",
     )
 
@@ -110,24 +110,32 @@ if __name__ == '__main__':
                 ar = Archive(os.path.join(base_dir, "data"))
                 with Pool(initializer=initialize_worker, processes=args.processes) as pool:
                     for txt, meta in pool.imap(func=process_doc, iterable=enumerate(ds), chunksize=1):                         
-                        stats['documents'] += 1                        
                         
-                        for key in meta.keys():
-                            if not isinstance(meta[key], str):
-                                stats[key] = stats.setdefault(key, 0) + meta[key]
-                        ar.add_data(txt, meta = meta)                
+                        #Handling empty document removal                       
+                        if txt:
+                            stats['documents'] += 1                        
+                            
+                            for key in meta.keys():
+                                if isinstance(meta[key], (int, float)):
+                                    stats[key] = stats.setdefault(key, 0) + meta[key]
+                            ar.add_data(txt, meta = meta)                
 
-                        
+                            
 
-                        if args.sample:
-                            if counter < 5:
-                                sample.append({"text": txt, "meta": meta})
-                
-                            if counter == 4:
-                                with open(os.path.join(base_dir, sample_dir, d.name + ".sample"), "w", encoding = "utf-8") as f:
-                                    f.write(json.dumps(sample, ensure_ascii = False ,  indent=4))
+                            if args.sample:
+                                if counter < 5:
+                                    sample.append({"text": txt, "meta": meta})
+                    
+                                if counter == 4:
+                                    with open(os.path.join(base_dir, sample_dir, d.name + ".sample"), "w", encoding = "utf-8") as f:
+                                        f.write(json.dumps(sample, ensure_ascii = False ,  indent=4))
 
-                        counter += 1
+                            counter += 1
+                        else:
+                            name = meta.get("name", "")
+                            if name == "":
+                                name = meta.get("url", "")[:80]
+                            log("Removed empty document : " + name, "WARNING")
 
 
 
