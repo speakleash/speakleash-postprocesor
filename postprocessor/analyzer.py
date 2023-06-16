@@ -29,7 +29,7 @@ class Analyzer(object):
             
             # Check if the split point is not a space
             if not self.txt[end-1].isspace() and end < len(self.txt):
-                while not self.txt[end].isspace() and end < len(self.txt):
+                while not self.txt[end-1].isspace() and end < len(self.txt):
                     end += 1
             
             parts.append(self.txt[start:end])

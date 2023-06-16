@@ -35,7 +35,7 @@ if __name__ == '__main__':
 
     VERSION = "0.1.1"
 
-    base_dir = os.path.join(os.path.dirname(__file__))
+    base_dir = os.path.join(os.path.dirname(__file__), "output")
     manifest_dir = os.path.join(base_dir, "manifests")
     replicate_to = os.path.join(base_dir, "datasets")
     sample_dir = os.path.join(base_dir, "samples")
@@ -99,7 +99,7 @@ if __name__ == '__main__':
             manifest = d.manifest
 
             
-            file_name_zst = os.path.join(base_dir, d.name + '.zst')
+            file_name_zst = os.path.join(base_dir, d.name + 'jsonl.zst')
             file_name_manifest = os.path.join(base_dir, d.name + '.manifest') 
 
             counter = 0
@@ -108,7 +108,7 @@ if __name__ == '__main__':
 
             if args.metrics:
                 ar = Archive(os.path.join(base_dir, "data"))
-                with Pool(initializer=initialize_worker, processes=args.processes) as pool:
+                with Pool(initializer=initialize_worker, processes=args.processes, maxtasksperchild=2000) as pool:
                     for txt, meta in pool.imap(func=process_doc, iterable=enumerate(ds), chunksize=1):                         
                         
                         #Handling empty document removal                       
