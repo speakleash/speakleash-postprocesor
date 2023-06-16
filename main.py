@@ -35,7 +35,8 @@ if __name__ == '__main__':
 
     VERSION = "0.1.1"
 
-    base_dir = os.path.join(os.path.dirname(__file__), "output")
+    base_dir = os.path.join(os.path.dirname(__file__))
+    output_dir = os.path.join(base_dir, "output")
     manifest_dir = os.path.join(base_dir, "manifests")
     replicate_to = os.path.join(base_dir, "datasets")
     sample_dir = os.path.join(base_dir, "samples")
@@ -66,6 +67,8 @@ if __name__ == '__main__':
     if args.metrics:
         if not os.path.exists(manifest_dir):
             os.makedirs(manifest_dir)
+        if not os.path.exists(output_dir):
+            os.makedirs(output_dir)
 
     if args.sample:
         if not os.path.exists(sample_dir):
@@ -99,8 +102,8 @@ if __name__ == '__main__':
             manifest = d.manifest
 
             
-            file_name_zst = os.path.join(base_dir, d.name + 'jsonl.zst')
-            file_name_manifest = os.path.join(base_dir, d.name + '.manifest') 
+            file_name_zst = os.path.join(base_dir, output_dir,  d.name + 'jsonl.zst')
+            file_name_manifest = os.path.join(base_dir, output_dir, d.name + '.manifest') 
 
             counter = 0
             sample = []
