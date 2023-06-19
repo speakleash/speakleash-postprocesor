@@ -68,6 +68,9 @@ class Analyzer(object):
         gunning_fog = 0
         uniq_words = set()
         camel_case = 0
+        pos_x = 0
+        pos_num = 0
+        capitalized_words = 0
 
         text_parts = self._split_text()
 
@@ -76,22 +79,30 @@ class Analyzer(object):
             doc = self.nlp(part)
 
             for token in doc:
-                if not token.is_punct and not token.is_stop and not token.is_space:
+                if not token.is_punct and not token.is_space:
                     if token.is_oov and not token.pos_ == "SYM":
-                        oovs +=1
-                    if token.pos_ == "NOUN":
+                        oovs += 1
+                    
+                    # Update stats based on token's part-of-speech
+                    if token.pos_ == "X":
+                        pos_x += 1
+                    elif token.pos_ =="NUM":
+                        pos_num += 1
+                    elif token.pos_ == "NOUN":
                         nouns += 1
-                        uniq_words.add(token.lemma_)
                     elif token.pos_ == "VERB":
                         verbs += 1
-                        uniq_words.add(token.lemma_)
                     elif token.pos_ == "ADJ":
                         adjectives += 1
-                        uniq_words.add(token.lemma_)
                     elif token.pos_ == "ADV":
                         adverbs += 1
-                        uniq_words.add(token.lemma_)
+
+                    # Add token's lemma to unique words
+                    uniq_words.add(token.lemma_)
+
                     avg_word_length += len(token.text)
+
+                # Update stats for symbols, stopwords, punctuations, and words
                 if token.pos_ == "SYM":
                     symbols += 1
                 if token.is_stop:
@@ -100,8 +111,10 @@ class Analyzer(object):
                     punctuations += 1
                 elif not token.is_space and not token.pos_ == "SYM":
                     words += 1
-                    if re.match(self.CAMEL_CASE_PATTERN,token.text):
-                        camel_case +=1                     
+                    if re.match(self.CAMEL_CASE_PATTERN, token.text):
+                        camel_case += 1
+                    if token.text.isupper():
+                        capitalized_words +=1         
                                         
 
             for sentence in doc.sents:
@@ -154,6 +167,8 @@ class Analyzer(object):
         new_meta["symbols"] = symbols
         new_meta["stopwords"] = stopwords
         new_meta["oovs"] = oovs
+        new_meta["pos_x"] = pos_x
+        new_meta["pos_num"] = pos_num
         new_meta["avg_word_length"] = round(avg_word_length,4)
         new_meta["noun_ratio"] = round(noun_ratio,4)
         new_meta["verb_ratio"] = round(verb_ratio,4)
@@ -161,6 +176,7 @@ class Analyzer(object):
         new_meta["lexical_density"] = round(lexical_density,4)
         new_meta["gunning_fog"] = round(gunning_fog,4)
         new_meta["camel_case"] = camel_case
+        new_meta["capitalized_words"] = capitalized_words
 
         #Remove obsolete keys from new_meta 
         for key in self.OBSOLETE_KEYS:

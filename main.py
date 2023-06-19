@@ -33,7 +33,7 @@ if __name__ == '__main__':
 
     set_start_method("spawn")
 
-    VERSION = "0.1.1"
+    VERSION = "0.1.3"
 
     base_dir = os.path.join(os.path.dirname(__file__))
     output_dir = os.path.join(base_dir, "output")
