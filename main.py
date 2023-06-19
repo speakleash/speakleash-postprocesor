@@ -102,7 +102,7 @@ if __name__ == '__main__':
             manifest = d.manifest
 
             
-            file_name_zst = os.path.join(base_dir, output_dir,  d.name + 'jsonl.zst')
+            file_name_zst = os.path.join(base_dir, output_dir,  d.name + '.jsonl.zst')
             file_name_manifest = os.path.join(base_dir, output_dir, d.name + '.manifest') 
 
             counter = 0
