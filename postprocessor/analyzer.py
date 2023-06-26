@@ -1,4 +1,5 @@
 from common.functions import log
+from postprocessor.quality import sanity_check, get_doc_quality
 from datetime import datetime
 import textstat
 import re
@@ -10,13 +11,15 @@ class Analyzer(object):
     CAMEL_CASE_PATTERN = re.compile(r"\b[a-ząęćłńóśżź]+[A-ZĄĘĆŁŃÓŚŻŹ]+[a-ząęćłńóśżź]+[a-ząęćłńóśżźA-ZĄĘĆŁŃÓŚŻŹ]*\b")
     OBSOLETE_KEYS = ['length'] #A list of obsolete keys to remove from new meta
 
-    def __init__(self, txt, meta, nlp, index):
+    def __init__(self, txt, meta, nlp, index, metrics=True, quality_metrics=True):
         textstat.set_lang('pl')
         self.txt = txt
         self.meta = meta
         self.nlp = nlp
         self.nlp.max_length = len(txt) + 100
         self.index = index
+        self.metrics = metrics
+        self.quality_metrics = quality_metrics
 
     def _split_text(self):
         parts = []
@@ -37,18 +40,11 @@ class Analyzer(object):
             end += self.MAX_TEXT_PART
 
         return parts
-
-    def go(self):
-
-        t1 = datetime.now() 
-
-        name = self.meta.get("name", "")
-        if name == "":
-            name = self.meta.get("url", "")[:80]
+    
+    def _count_metrics(self):
 
         new_meta = self.meta
 
-        
         words = 0
         verbs = 0
         nouns = 0
@@ -181,6 +177,28 @@ class Analyzer(object):
         #Remove obsolete keys from new_meta 
         for key in self.OBSOLETE_KEYS:
             new_meta.pop(key,None)
+        
+        return new_meta
+
+    def go(self):
+
+        t1 = datetime.now() 
+
+        name = self.meta.get("name", "")
+        if name == "":
+            name = self.meta.get("url", "")[:80]
+
+        new_meta = self.meta
+        
+
+        if self.metrics:
+            new_meta = self._count_metrics()
+
+        if self.quality_metrics:
+            if sanity_check(new_meta):
+                get_doc_quality(new_meta)
+            else:
+                log("Required metrics for quality check not found in meta: " + name, "WARNING")
 
 
         d = datetime.now() - t1

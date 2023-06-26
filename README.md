@@ -36,15 +36,16 @@ The script accepts the following command-line arguments:
 ### `--metrics`
 
 - Use this argument to calculate metrics for the dataset.
-- This argument does not require a value.
-- Example usage: `python main.py --metrics`
+- This argument accepts an additional values [metrics quality]. If additional values are specified only selected metrics are counted.
+- This argument does not require a value. In this case all available metrics are counted.
+- Example usage: `python main.py --metrics metrics quality`
 
 ### `--name`
 
 - Use this argument to specify the name of the dataset.
-- This argument requires a string value representing the name of the dataset.
+- This argument requires a string value representing the name of the dataset or list of strings separated by space
 - If this argument is omitted, the script will generate samples or calculate metrics for all available datasets.
-- Example usage: `python main.py --name my_dataset`
+- Example usage: `python main.py --name my_dataset1 my_dataset2`
 
 ### `--processes`
 
