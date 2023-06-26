@@ -21,7 +21,7 @@ class MetricsAction(argparse.Action):
         if values:
             setattr(namespace, self.dest, values)
         else:
-            setattr(namespace, self.dest, ['metrics', 'quality'])
+            setattr(namespace, self.dest, ['stats', 'quality'])
 
 
 def process_doc(doc, metrics, quality):
@@ -37,6 +37,7 @@ def initialize_worker():
 
     global nlp
     nlp = spacy.load("pl_core_news_md", disable=('ner','textcat','entity_linker'))
+
 
 
 
@@ -58,7 +59,7 @@ if __name__ == '__main__':
     )
 
     parser.add_argument("--sample", action="store_true", help="Generate sample of dataset")
-    parser.add_argument("--metrics", nargs='*', action=MetricsAction, help="Calculate metrics for dataset [metrics, quality]")
+    parser.add_argument("--metrics", nargs='*', action=MetricsAction, help="Calculate metrics for dataset [stats, quality]")
     parser.add_argument("--name", type=str, nargs='+', help="Name(s) of dataset")
     parser.add_argument("--processes", type=int, help="Number of prcocesses used for metrics counting. Default = os.cpu_count()")
 
@@ -75,9 +76,13 @@ if __name__ == '__main__':
         if not os.path.exists(output_dir):
             os.makedirs(output_dir)
             
-        get_metrics = 'metrics' in args.metrics
+        get_metrics = 'stats' in args.metrics
         get_quality = 'quality' in args.metrics
         process_doc_partial = partial(process_doc, metrics=get_metrics, quality=get_quality)
+        if get_metrics:
+            maxtasksperchild=2000
+        else:
+            maxtasksperchild=100000
 
     if args.sample:
         if not os.path.exists(sample_dir):
@@ -126,12 +131,13 @@ if __name__ == '__main__':
                     quality_high_count = 0
 
                 ar = Archive(os.path.join(base_dir, "data"))
-                with Pool(initializer=initialize_worker, processes=args.processes, maxtasksperchild=2000) as pool:
+                with Pool(initializer=initialize_worker, processes=args.processes, maxtasksperchild=maxtasksperchild) as pool:
                     for txt, meta in pool.imap(func=process_doc_partial, iterable=enumerate(ds), chunksize=1):                         
                         
                         #Handling empty document removal                       
                         if txt:
                             stats['documents'] += 1                        
+                            
                             
                             for key in meta.keys():
                                 if isinstance(meta[key], (int, float)):
@@ -170,14 +176,14 @@ if __name__ == '__main__':
                     pool.join()
                     ar.commit()
 
-                if get_metrics:
-                    for key in stats.keys():
-                        if key in Analyzer.AVG_METRICS_DEF:
-                            stats[key] = round(stats[key]/stats['documents'],4)
-                    
-                    #Remove obsolete keys from manifest stats if present
-                    for key in Analyzer.OBSOLETE_KEYS:
-                        stats.pop(key,None)
+                
+                for key in stats.keys():
+                    if key in Analyzer.AVG_METRICS_DEF:
+                        stats[key] = round(stats[key]/stats['documents'],4)
+                
+                #Remove obsolete keys from manifest stats if present
+                for key in Analyzer.OBSOLETE_KEYS:
+                    stats.pop(key,None)
                     
                 if get_quality:
                     stats['quality'] = {'HIGH' : round(quality_high_count/stats['documents'],2), 'MEDIUM': round(quality_med_count/stats['documents'],2), 'LOW': round(quality_low_count/stats['documents'],2)}
