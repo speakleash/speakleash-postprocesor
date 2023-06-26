@@ -36,9 +36,9 @@ The script accepts the following command-line arguments:
 ### `--metrics`
 
 - Use this argument to calculate metrics for the dataset.
-- This argument accepts an additional values [metrics quality]. If additional values are specified only selected metrics are counted.
+- This argument accepts an additional values [stats quality]. If additional values are specified only selected metrics are counted.
 - This argument does not require a value. In this case all available metrics are counted.
-- Example usage: `python main.py --metrics metrics quality`
+- Example usage: `python main.py --metrics stats quality`
 
 ### `--name`
 
