@@ -135,7 +135,7 @@ if __name__ == '__main__':
                     for txt, meta in pool.imap(func=process_doc_partial, iterable=enumerate(ds), chunksize=1):                         
                         
                         #Handling empty document removal                       
-                        if txt:
+                        if txt and len(txt)>200 and meta['words']>0:
                             stats['documents'] += 1                        
                             
                             

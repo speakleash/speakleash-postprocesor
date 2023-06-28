@@ -64,7 +64,10 @@ def get_filtered(meta):
     
 def get_doc_quality(meta):
     temp_meta = meta.copy()
-    temp_meta = get_data(temp_meta)
-    temp_meta['quality'] = get_filtered(temp_meta)
-    meta['quality'] = temp_meta['quality']
+    try:
+        temp_meta = get_data(temp_meta)
+        temp_meta['quality'] = get_filtered(temp_meta)
+        meta['quality'] = temp_meta['quality']
+    except:
+        meta['quality'] = 'LOW'
     return meta
