@@ -1,9 +1,10 @@
 lm-dataformat
 tqdm
 spacy>=3.5.3
-https://github.com/explosion/spacy-models/releases/download/pl_core_news_md-3.5.3/pl_core_news_md-3.5.3.tar.gz
+pl_core_news_md>=3.5.3
 speakleash
 pyfiglet
 rich
 textstat
 functools
+fasttext-langdetect
