@@ -12,18 +12,19 @@ from speakleash import Speakleash
 from postprocessor.analyzer import Analyzer
 from lm_dataformat import Archive
 from common.functions import log
+from postprocessor.deduplicator import Deduplicator
 
 
 class MetricsAction(argparse.Action):
     def __call__(self, parser, namespace, values, option_string=None):
-        setattr(namespace, self.dest, values if values else ['stats', 'quality', 'lang'])
+        setattr(namespace, self.dest, values if values else ['stats', 'quality', 'lang', 'dedup'])
 
 
 def process_doc(doc, metrics, quality, lang):
-    counter, (txt, meta) = doc
-    analyzer = Analyzer(txt, meta, nlp, counter, metrics, quality, lang)
+    index, (txt, meta) = doc
+    analyzer = Analyzer(txt, meta, nlp, index, metrics, quality, lang)
     meta = analyzer.go()
-    return txt, meta
+    return txt, meta, index
 
 
 def initialize_worker():
@@ -41,7 +42,7 @@ def generate_sample(dataset, sample_dir, samples = None):
 if __name__ == '__main__':
     set_start_method("spawn")
 
-    VERSION = "0.1.4"
+    VERSION = "0.1.5"
 
     base_dir = os.path.dirname(__file__)
     output_dir = os.path.join(base_dir, "output")
@@ -56,7 +57,7 @@ if __name__ == '__main__':
 
     parser.add_argument("--sample", action="store_true", help="Generate a sample of the dataset")
     parser.add_argument("--metrics", nargs='*', action=MetricsAction,
-                        help="Calculate metrics for the dataset [stats, quality, lang]")
+                        help="Calculate metrics for the dataset [stats, quality, lang, dedup]")
     parser.add_argument("--name", type=str, nargs='+', help="Name(s) of the dataset")
     parser.add_argument("--processes", type=int,
                         help="Number of processes used for metrics counting. Default = os.cpu_count()")
@@ -76,8 +77,9 @@ if __name__ == '__main__':
         get_metrics = 'stats' in args.metrics
         get_quality = 'quality' in args.metrics
         get_lang = 'lang' in args.metrics
+        get_duplicates = 'dedup' in args.metrics
         process_doc_partial = partial(process_doc, metrics=get_metrics, quality=get_quality, lang=get_lang)
-        maxtasksperchild = 2000 if get_metrics else 100000
+        maxtasksperchild = 2500 if get_metrics else 100000
 
     if args.sample:
         if not os.path.exists(sample_dir):
@@ -117,14 +119,26 @@ if __name__ == '__main__':
             ds = dataset.ext_data
 
             if args.metrics:
+
+                if get_duplicates:
+                    duplicate_indices = Deduplicator(ds).dup_list
+                    ds = dataset.ext_data
+
+
                 if get_quality or manifest.get('stats',{}).get('quality',None):
                     quality_count = {'LOW': 0, 'MEDIUM': 0, 'HIGH': 0}
-
+ 
                 ar = Archive(os.path.join(base_dir, "data"))
                 with Pool(initializer=initialize_worker, processes=args.processes,
                           maxtasksperchild=maxtasksperchild) as pool:
-                    for txt, meta in pool.imap(func=process_doc_partial, iterable=enumerate(ds),
+                    for txt, meta, index in pool.imap(func=process_doc_partial, iterable=enumerate(ds),
                                                          chunksize=1):
+                        
+                        if get_duplicates and index in duplicate_indices:
+                            name = meta.get("name", "") or meta.get("url", "")[:80]
+                            log("Removed duplicate : " + name, "WARNING")
+                            continue
+
                         if txt and len(txt) > 200 and meta['words'] > 0:
                                                         
                             if get_lang and not meta['language']['lang'] == 'pl':
@@ -169,6 +183,9 @@ if __name__ == '__main__':
                         'MEDIUM': round(quality_count['MEDIUM'] / stats['documents'], 2),
                         'LOW': round(quality_count['LOW'] / stats['documents'], 2)
                     }
+
+                if get_duplicates:
+                    log("Found and removed " + str(len(duplicate_indices))+" duplicates", "WARNING")
 
                 ar = None
                 data_files = glob.glob(os.path.join(base_dir, 'data', '*'))

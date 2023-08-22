@@ -35,10 +35,14 @@ The script accepts the following command-line arguments:
 
 ### `--metrics`
 
-- Use this argument to calculate metrics for the dataset.
-- This argument accepts an additional values [stats quality lang]. If additional values are specified only selected metrics are counted.
+- Use this argument to calculate metrics and perform cleaning on the dataset.
+- This argument accepts an additional values [stats quality lang dedup]. If additional values are specified only selected steps are accounted.
 - This argument does not require a value. In this case all available metrics are counted.
-- Example usage: `python main.py --metrics lang quality`
+- stats value calculates text metrics for each document and whole dataset
+- quality value calculates quality metrics for each document and whole dataset
+- lang value drops non polish documents from output dataset
+- dedup valiue drops exact duplicates from output dataset
+- Example usage: `python main.py --metrics lang dedup`
 - Example usage: `python main.py --metrics`
 
 ### `--name`
