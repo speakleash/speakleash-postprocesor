@@ -13,6 +13,7 @@ from postprocessor.analyzer import Analyzer
 from lm_dataformat import Archive
 from common.functions import log
 from postprocessor.deduplicator import Deduplicator
+from datetime import datetime
 
 
 class MetricsAction(argparse.Action):
@@ -196,6 +197,12 @@ if __name__ == '__main__':
                         shutil.copy(f, file_name_zst)
                         file_size = os.path.getsize(file_name_zst)
                         os.remove(f)
+                
+                current_timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+                if 'creation_date' not in manifest:
+                    manifest['creation_date'] = current_timestamp
+                else:
+                    manifest['updated_date'] = current_timestamp
 
                 manifest['stats'] = stats
                 manifest['file_size'] = file_size
