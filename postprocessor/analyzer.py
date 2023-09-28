@@ -3,6 +3,7 @@ from postprocessor.quality import sanity_check, get_doc_quality
 from datetime import datetime
 import textstat
 import re
+from ftlangdetect import detect
 
 class Analyzer(object):
 
@@ -11,7 +12,7 @@ class Analyzer(object):
     CAMEL_CASE_PATTERN = re.compile(r"\b[a-ząęćłńóśżź]+[A-ZĄĘĆŁŃÓŚŻŹ]+[a-ząęćłńóśżź]+[a-ząęćłńóśżźA-ZĄĘĆŁŃÓŚŻŹ]*\b")
     OBSOLETE_KEYS = ['length'] #A list of obsolete keys to remove from new meta
 
-    def __init__(self, txt, meta, nlp, index, metrics=True, quality_metrics=True):
+    def __init__(self, txt, meta, nlp, index, metrics=True, quality_metrics=True, lang_detect = True):
         textstat.set_lang('pl')
         self.txt = txt
         self.meta = meta
@@ -20,6 +21,7 @@ class Analyzer(object):
         self.index = index
         self.metrics = metrics
         self.quality_metrics = quality_metrics
+        self.lang_detect = lang_detect
 
     def _split_text(self):
         parts = []
@@ -200,10 +202,17 @@ class Analyzer(object):
             else:
                 log("Required metrics for quality check not found in meta: " + name, "WARNING")
 
+        if self.lang_detect:
+            new_meta["language"] = detect(self.txt.replace('\n',' '))
+
+
 
         d = datetime.now() - t1
         elapsed = d.total_seconds()
-        log("Processing document (" + str(elapsed) + " s): " + str(self.index+1) + " " + name, "INFO")
+        try:
+            log("Processing document (" + str(elapsed) + " s): " + str(self.index+1) + " " + name, "INFO")
+        except:
+            pass
 
         return new_meta
 
