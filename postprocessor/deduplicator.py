@@ -19,7 +19,7 @@ class Deduplicator:
         log("Gathering documents data...", "INFO")      
         
         # Using a list comprehension to create the data for dataframe
-        data = [{'text': txt, 'characters': meta['characters']} for txt, meta in ds]
+        data = [{'text': txt, 'characters': meta.get('characters', meta.get('length', len(txt)))} for txt, meta in ds]
         
         # Directly creating the dataframe from the data
         frame = pd.DataFrame(data)
