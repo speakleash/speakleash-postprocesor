@@ -1,16 +1,23 @@
-from common.functions import log
-from postprocessor.quality import sanity_check, get_doc_quality
-from datetime import datetime
-import textstat
 import re
+import warnings
+
+import numpy
+import textstat
+import fasttext
 from ftlangdetect import detect
+from postprocessor.utils import log
+from postprocessor.quality import sanity_check, get_doc_quality
+
+fasttext.FastText.eprint = lambda x: None   # Suppress warnings from 'fasttext' library
+warnings.filterwarnings('ignore')           # Disable warnings from 'textstat' library
+
 
 class Analyzer(object):
 
     AVG_METRICS_DEF = ['avg_word_length', 'avg_sentence_length', 'noun_ratio', 'verb_ratio', 'adj_ratio', 'lexical_density', 'gunning_fog']
     MAX_TEXT_PART = 1024 * 1024 # Max text chunk part 
     CAMEL_CASE_PATTERN = re.compile(r"\b[a-ząęćłńóśżź]+[A-ZĄĘĆŁŃÓŚŻŹ]+[a-ząęćłńóśżź]+[a-ząęćłńóśżźA-ZĄĘĆŁŃÓŚŻŹ]*\b")
-    OBSOLETE_KEYS = ['length'] #A list of obsolete keys to remove from new meta
+    OBSOLETE_KEYS = ['length'] # A list of obsolete keys to remove from new meta
 
     def __init__(self, txt, meta, nlp, index, metrics=True, quality_metrics=True, lang_detect = True):
         textstat.set_lang('pl')
@@ -24,9 +31,9 @@ class Analyzer(object):
         self.lang_detect = lang_detect
 
     def _split_text(self):
-        parts = []
         start = 0
         end = self.MAX_TEXT_PART
+        parts = []
 
         while start < len(self.txt):
             if end >= len(self.txt):
@@ -42,11 +49,9 @@ class Analyzer(object):
             end += self.MAX_TEXT_PART
 
         return parts
-    
+
     def _count_metrics(self):
-
         new_meta = self.meta
-
         words = 0
         verbs = 0
         nouns = 0
@@ -152,7 +157,6 @@ class Analyzer(object):
         if words > 0:
             gunning_fog = textstat.gunning_fog(self.txt)
 
-
         new_meta["characters"] = len(self.txt)
         new_meta["sentences"] = sentences
         new_meta["avg_sentence_length"] = round(avg_sentence_length,4)
@@ -176,22 +180,14 @@ class Analyzer(object):
         new_meta["camel_case"] = camel_case
         new_meta["capitalized_words"] = capitalized_words
 
-        #Remove obsolete keys from new_meta 
+        # Remove obsolete keys from new_meta 
         for key in self.OBSOLETE_KEYS:
             new_meta.pop(key,None)
-        
+
         return new_meta
 
     def go(self):
-
-        t1 = datetime.now() 
-
-        name = self.meta.get("name", "")
-        if name == "":
-            name = self.meta.get("url", "")[:80]
-
         new_meta = self.meta
-        
 
         if self.metrics:
             new_meta = self._count_metrics()
@@ -200,19 +196,11 @@ class Analyzer(object):
             if sanity_check(new_meta):
                 get_doc_quality(new_meta)
             else:
+                name = self.meta.get("name", self.meta.get("url", ""))
                 log("Required metrics for quality check not found in meta: " + name, "WARNING")
 
         if self.lang_detect:
             new_meta["language"] = detect(self.txt.replace('\n',' '))
-
-
-
-        d = datetime.now() - t1
-        elapsed = d.total_seconds()
-        try:
-            log("Processing document (" + str(elapsed) + " s): " + str(self.index+1) + " " + name, "INFO")
-        except:
-            pass
+            new_meta["language"]["score"] = numpy.round(new_meta["language"]["score"], 3)
 
         return new_meta
-

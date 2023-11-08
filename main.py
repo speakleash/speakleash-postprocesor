@@ -1,19 +1,22 @@
-import argparse
-import json
 import os
-import shutil
-import spacy
 import glob
-import pyfiglet
-from multiprocessing import Pool, set_start_method
+import json
+import shutil
+import logging
+import argparse
+from datetime import datetime
 from functools import partial
+from multiprocessing import Pool, set_start_method
+
+import spacy
+import pyfiglet
+from tqdm import tqdm
 from rich import print as rich_print
 from speakleash import Speakleash
-from postprocessor.analyzer import Analyzer
 from lm_dataformat import Archive
-from common.functions import log
+from postprocessor.utils import log
 from postprocessor.deduplicator import Deduplicator
-from datetime import datetime
+from postprocessor.analyzer import Analyzer
 
 
 class MetricsAction(argparse.Action):
@@ -22,10 +25,10 @@ class MetricsAction(argparse.Action):
 
 
 def process_doc(doc, metrics, quality, lang):
-    index, (txt, meta) = doc
-    analyzer = Analyzer(txt, meta, nlp, index, metrics, quality, lang)
-    meta = analyzer.go()
-    return txt, meta, index
+    id_doc, (doc_txt, doc_meta) = doc
+    analyzer = Analyzer(doc_txt, doc_meta, nlp, id_doc, metrics, quality, lang)
+    doc_meta = analyzer.go()
+    return doc_txt, doc_meta, id_doc
 
 
 def initialize_worker():
@@ -43,35 +46,45 @@ def generate_sample(dataset, sample_dir, samples = None):
 if __name__ == '__main__':
     set_start_method("spawn")
 
-    VERSION = "0.1.5"
+    VERSION = "0.1.6"
 
     base_dir = os.path.dirname(__file__)
-    output_dir = os.path.join(base_dir, "output")
-    manifest_dir = os.path.join(base_dir, "manifests")
-    replicate_to = os.path.join(base_dir, "datasets")
-    sample_dir = os.path.join(base_dir, "samples")
+    output_dir = os.path.join(base_dir, "processing_output")
+    replicate_to = os.path.join(base_dir, "processing_datasets")
+    sample_dir = os.path.join(base_dir, "processing_samples")
+    logs_dir = os.path.join(base_dir, "processing_logs")
+    dedup_dir = os.path.join(base_dir, "processing_duplicates")
+    TEMP_DATA = "temp_data"
 
     parser = argparse.ArgumentParser(
         prog="SpeakLeash post-processor",
-        description="Application performing post-processing (determining metrics, generating samples, etc.) on SpeakLeash datasets",
+        description="Application performing post-processing \
+                    (determining metrics, generating samples, etc.) on SpeakLeash datasets"
     )
 
-    parser.add_argument("--sample", action="store_true", help="Generate a sample of the dataset")
+    parser.add_argument("--sample", action="store_true",
+                        help="Generate a sample of the dataset")
     parser.add_argument("--metrics", nargs='*', action=MetricsAction,
                         help="Calculate metrics for the dataset [stats, quality, lang, dedup]")
-    parser.add_argument("--name", type=str, nargs='+', help="Name(s) of the dataset")
+    parser.add_argument("--name", type=str, nargs='+',
+                        help="Name(s) of the dataset")
     parser.add_argument("--processes", type=int,
-                        help="Number of processes used for metrics counting. Default = os.cpu_count()")
+                        help="Number of processes used for metrics counting. Default = os.cpu_count() - 1")
+    parser.add_argument("--update", action="store_true",
+                        help="If dataset is updated (new files) - create 'update_date' in manifest")
+    parser.add_argument("--dedup_out", action="store_true",
+                        help="Create folder with CSV files where all duplicated documents are listed")
+    parser.add_argument("--min_txt_len", type=int, default=200,
+                        help="Minimum Text Length (default 200)")
 
     args = parser.parse_args()
     all_datasets = not args.name
+    MIN_TXT_LENGTH = args.min_txt_len
 
     if not args.processes:
-        args.processes = os.cpu_count()
+        args.processes = 1 if (os.cpu_count() - 1) < 2 else os.cpu_count() - 1
 
     if args.metrics:
-        if not os.path.exists(manifest_dir):
-            os.makedirs(manifest_dir)
         if not os.path.exists(output_dir):
             os.makedirs(output_dir)
 
@@ -79,12 +92,20 @@ if __name__ == '__main__':
         get_quality = 'quality' in args.metrics
         get_lang = 'lang' in args.metrics
         get_duplicates = 'dedup' in args.metrics
-        process_doc_partial = partial(process_doc, metrics=get_metrics, quality=get_quality, lang=get_lang)
+        process_doc_partial = partial(process_doc, metrics=get_metrics, 
+                                      quality=get_quality, lang=get_lang)
         maxtasksperchild = 2500 if get_metrics else 100000
 
     if args.sample:
         if not os.path.exists(sample_dir):
             os.makedirs(sample_dir)
+
+    if args.dedup_out:
+        if not os.path.exists(dedup_dir):
+            os.makedirs(dedup_dir)
+
+    if not os.path.exists(logs_dir):
+        os.makedirs(logs_dir)
 
     figlet = pyfiglet.Figlet(font="slant")
     ascii_banner = figlet.renderText("SpeakLeash")
@@ -93,6 +114,9 @@ if __name__ == '__main__':
 
     rich_print("Generating sample: [green]" + str(args.sample) + "[/green]")
     rich_print("Calculating metrics: [green]" + str(args.metrics) + "[/green]")
+    rich_print("Update dataset -> update date in manifest: [green]" + str(args.update) + "[/green]")
+    rich_print("Postprocesor will create: [green]" + str(args.processes) + " processes" + "[/green]")
+    rich_print("Minimum text length: [green]" + str(MIN_TXT_LENGTH) + "[/green]")
 
     if args.name:
         rich_print("Dataset name: [green]" + str(args.name) + "[/green]")
@@ -103,10 +127,19 @@ if __name__ == '__main__':
     print("")
     log("Starting post-processing", "INFO")
 
-    manifest = {}
     sl = Speakleash(replicate_to)
+    manifest = {}
+
     for dataset in sl.datasets:
         if all_datasets or dataset.name in args.name:
+            time_now = datetime.now()
+            logging.basicConfig(format='%(asctime)s: %(levelname)s: %(message)s',
+                                filename=os.path.join(logs_dir, dataset.name + '_' + time_now.strftime('%Y-%m-%d--%H-%M-%S') + '.log'),
+                                encoding='utf-8', level=logging.DEBUG)
+
+            logging.info("------------------------------------------------")
+            logging.info(f"Starting postprocesor on dataset: {dataset.name}")
+
             log("Processing dataset: " + dataset.name, "INFO")
 
             stats = {'documents': 0}
@@ -117,59 +150,84 @@ if __name__ == '__main__':
 
             counter = 0
             samples = []
-            ds = dataset.ext_data
 
+            # Start checking what need to be done
             if args.metrics:
 
+                duplicate_indices = []
+                dataset_index_max = 0
+
+                # Get duplicates or only dataset length
                 if get_duplicates:
-                    duplicate_indices = Deduplicator(ds).dup_list
-                    ds = dataset.ext_data
+                    duplicate_indices, dataset_index_max = Deduplicator.get_duplicates(dataset, args.dedup_out,
+                                                            duplicates_file = os.path.join(dedup_dir, dataset.name + '_Non-Unique_Texts.csv'))
+                else:
+                    dataset_index_max = Deduplicator.get_length(dataset)
 
-
+                # Get Quality dictionary
                 if get_quality or manifest.get('stats',{}).get('quality',None):
                     quality_count = {'LOW': 0, 'MEDIUM': 0, 'HIGH': 0}
- 
-                ar = Archive(os.path.join(base_dir, "data"))
-                with Pool(initializer=initialize_worker, processes=args.processes,
-                          maxtasksperchild=maxtasksperchild) as pool:
-                    for txt, meta, index in pool.imap(func=process_doc_partial, iterable=enumerate(ds),
-                                                         chunksize=1):
-                        
+
+                # Init Archive for final dataset file
+                ar = Archive(os.path.join(base_dir, TEMP_DATA))
+
+                ds_extdata = dataset.ext_data
+
+                with Pool(initializer = initialize_worker, processes = args.processes,
+                          maxtasksperchild = maxtasksperchild) as pool:
+
+                    for txt, meta, index in tqdm(pool.imap(func = process_doc_partial,
+                                                      iterable = enumerate(ds_extdata),
+                                                      chunksize = 1),
+                                                total = dataset_index_max,
+                                                smoothing=0.01):
+
+                        name = meta.get("name", meta.get("url", ""))
+
+                        # Check if document is a duplicate
                         if get_duplicates and index in duplicate_indices:
-                            name = meta.get("name", "") or meta.get("url", "")[:80]
-                            log("Removed duplicate : " + name, "WARNING")
+                            logging.warning(f"Removed duplicate : {name}")
                             continue
 
-                        if txt and len(txt) > 200 and meta['words'] > 0:
-                                                        
-                            if get_lang and not meta['language']['lang'] == 'pl':
-                                try:
-                                    name = meta.get("name", "") or meta.get("url", "")[:80]
-                                    log("Removed non 'pl' document : " + name, "WARNING")
-                                except:
-                                    pass
+                        # Check if document has minimum length and words
+                        if txt and len(txt) > MIN_TXT_LENGTH and meta['words'] > 0:
+
+                            # Check for document language
+                            if get_lang and meta['language']['lang'] != 'pl':
+                                logging.warning(f"Removed non 'pl' document : {name} | meta: {meta['language']}")
                                 continue
 
+                            # Add document to final dataset
                             stats['documents'] += 1
                             for key, value in meta.items():
                                 if isinstance(value, (int, float)):
                                     stats[key] = stats.get(key, 0) + value
                             ar.add_data(txt, meta=meta)
 
+                            # Add document to corresponding quality counter
                             if get_quality or manifest.get('stats',{}).get('quality',None):
                                 quality_count[meta['quality']] += 1
 
+                            # Create samples
                             if args.sample and counter < 5:
                                 samples.append({"text": txt, "meta": meta})
 
                             counter += 1
                         else:
-                            name = meta.get("name", "") or meta.get("url", "")[:80]
-                            log("Removed empty document : " + name, "WARNING")
+                            logging.warning(f"Removed empty document : {name}")
 
                 pool.close()
                 pool.join()
                 ar.commit()
+
+                if get_duplicates:
+                    log("Found and removed " + str(len(duplicate_indices))+" duplicates", "WARNING")
+                    logging.warning(f"Found and removed {len(duplicate_indices)} duplicates")
+
+                log(f"Logs can be found in the 'logs' folder", "INFO")
+
+                log(f"Dataset before: {dataset_index_max} docs -> now: {stats['documents']} docs", "INFO")
+                logging.info(f"Dataset before: {dataset_index_max} docs -> now: {stats['documents']} docs")
 
                 for key, value in stats.items():
                     if key in Analyzer.AVG_METRICS_DEF:
@@ -185,11 +243,11 @@ if __name__ == '__main__':
                         'LOW': round(quality_count['LOW'] / stats['documents'], 2)
                     }
 
-                if get_duplicates:
-                    log("Found and removed " + str(len(duplicate_indices))+" duplicates", "WARNING")
+                log(f"Adding last details in the manifest and clearing cache files...", "INFO")
+                logging.info("Adding last details in the manifest and clearing cache files...")
 
                 ar = None
-                data_files = glob.glob(os.path.join(base_dir, 'data', '*'))
+                data_files = glob.glob(os.path.join(base_dir, TEMP_DATA, '*'))
                 file_size = 0
 
                 for f in data_files:
@@ -197,17 +255,17 @@ if __name__ == '__main__':
                         shutil.copy(f, file_name_zst)
                         file_size = os.path.getsize(file_name_zst)
                         os.remove(f)
-                
-                current_timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+
+                current_timestamp = time_now.strftime('%Y-%m-%d %H:%M:%S')
                 if 'creation_date' not in manifest:
                     manifest['creation_date'] = current_timestamp
-                else:
+                elif args.update:
                     manifest['updated_date'] = current_timestamp
 
                 manifest['stats'] = stats
                 manifest['file_size'] = file_size
 
-                with open(file_name_manifest, 'w') as mf:
+                with open(file_name_manifest, 'w', encoding='utf-8') as mf:
                     json.dump(manifest, mf, indent=4)
 
             if args.sample:
@@ -219,8 +277,11 @@ if __name__ == '__main__':
             if os.path.exists(os.path.join(replicate_to, dataset.name + '.manifest')):
                 os.remove(os.path.join(replicate_to, dataset.name + '.manifest'))
 
-            if os.path.exists('data'):
-                shutil.rmtree('data')
+            if os.path.exists(TEMP_DATA):
+                shutil.rmtree(TEMP_DATA)
 
-    log("Finished post-processing", "INFO")
-    print("")
+            log(f"Finished processing dataset: {dataset.name}", "INFO")
+            logging.info(f"Finished processing dataset: {dataset.name}")
+            logging.info("++++++++++++++++++++++++++++++++++++++++++++++++")
+
+    log("Finished post-processing\n", "INFO")
