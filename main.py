@@ -10,11 +10,11 @@ from multiprocessing import Pool, set_start_method
 
 import spacy
 import pyfiglet
-from speakleash import Speakleash
-from rich import print as rich_print
-from lm_dataformat import Archive
 from tqdm import tqdm
-from common.functions import log
+from rich import print as rich_print
+from speakleash import Speakleash
+from lm_dataformat import Archive
+from postprocessor.utils import log
 from postprocessor.deduplicator import Deduplicator
 from postprocessor.analyzer import Analyzer
 
@@ -54,6 +54,7 @@ if __name__ == '__main__':
     sample_dir = os.path.join(base_dir, "processing_samples")
     logs_dir = os.path.join(base_dir, "processing_logs")
     dedup_dir = os.path.join(base_dir, "processing_duplicates")
+    TEMP_DATA = "temp_data"
 
     parser = argparse.ArgumentParser(
         prog="SpeakLeash post-processor",
@@ -68,7 +69,7 @@ if __name__ == '__main__':
     parser.add_argument("--name", type=str, nargs='+',
                         help="Name(s) of the dataset")
     parser.add_argument("--processes", type=int,
-                        help="Number of logical cores (aka processes) used for metrics counting. Default = os.cpu_count() - 1")
+                        help="Number of processes used for metrics counting. Default = os.cpu_count() - 1")
     parser.add_argument("--update", action="store_true",
                         help="If dataset is updated (new files) - create 'update_date' in manifest")
     parser.add_argument("--dedup_out", action="store_true",
@@ -114,7 +115,7 @@ if __name__ == '__main__':
     rich_print("Generating sample: [green]" + str(args.sample) + "[/green]")
     rich_print("Calculating metrics: [green]" + str(args.metrics) + "[/green]")
     rich_print("Update dataset -> update date in manifest: [green]" + str(args.update) + "[/green]")
-    rich_print("Postprocesor will use: [green]" + str(args.processes) + " logical cores" + "[/green]")
+    rich_print("Postprocesor will create: [green]" + str(args.processes) + " processes" + "[/green]")
     rich_print("Minimum text length: [green]" + str(MIN_TXT_LENGTH) + "[/green]")
 
     if args.name:
@@ -131,7 +132,7 @@ if __name__ == '__main__':
 
     for dataset in sl.datasets:
         if all_datasets or dataset.name in args.name:
-            time_now = datetime.utcnow()
+            time_now = datetime.now()
             logging.basicConfig(format='%(asctime)s: %(levelname)s: %(message)s',
                                 filename=os.path.join(logs_dir, dataset.name + '_' + time_now.strftime('%Y-%m-%d--%H-%M-%S') + '.log'),
                                 encoding='utf-8', level=logging.DEBUG)
@@ -168,7 +169,7 @@ if __name__ == '__main__':
                     quality_count = {'LOW': 0, 'MEDIUM': 0, 'HIGH': 0}
 
                 # Init Archive for final dataset file
-                ar = Archive(os.path.join(base_dir, "data"))
+                ar = Archive(os.path.join(base_dir, TEMP_DATA))
 
                 ds_extdata = dataset.ext_data
 
@@ -246,7 +247,7 @@ if __name__ == '__main__':
                 logging.info("Adding last details in the manifest and clearing cache files...")
 
                 ar = None
-                data_files = glob.glob(os.path.join(base_dir, 'data', '*'))
+                data_files = glob.glob(os.path.join(base_dir, TEMP_DATA, '*'))
                 file_size = 0
 
                 for f in data_files:
@@ -276,8 +277,8 @@ if __name__ == '__main__':
             if os.path.exists(os.path.join(replicate_to, dataset.name + '.manifest')):
                 os.remove(os.path.join(replicate_to, dataset.name + '.manifest'))
 
-            if os.path.exists('data'):
-                shutil.rmtree('data')
+            if os.path.exists(TEMP_DATA):
+                shutil.rmtree(TEMP_DATA)
 
             log(f"Finished processing dataset: {dataset.name}", "INFO")
             logging.info(f"Finished processing dataset: {dataset.name}")

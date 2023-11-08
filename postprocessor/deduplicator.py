@@ -10,13 +10,11 @@ Classes:
 Dependencies:
 - pandas: Provides dataframe and algorithms for finding duplicated documents.
 - tqdm: Provides formatted progress bar.
-- common.functions: Provides 'log' function (based on 'rich' library) for formatted logs.
-
+- postprocessor.utils: Provides 'log' function (based on 'rich' library) for formatted logs.
 """
 import pandas as pd
 from tqdm import tqdm
-from common.functions import log
-
+from postprocessor.utils import log
 
 class Deduplicator:
     """

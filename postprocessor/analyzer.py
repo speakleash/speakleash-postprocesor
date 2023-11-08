@@ -5,11 +5,11 @@ import numpy
 import textstat
 import fasttext
 from ftlangdetect import detect
-from common.functions import log
+from postprocessor.utils import log
 from postprocessor.quality import sanity_check, get_doc_quality
 
-fasttext.FastText.eprint = lambda x: None
-warnings.filterwarnings('ignore')
+fasttext.FastText.eprint = lambda x: None   # Suppress warnings from 'fasttext' library
+warnings.filterwarnings('ignore')           # Disable warnings from 'textstat' library
 
 
 class Analyzer(object):
