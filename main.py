@@ -177,7 +177,9 @@ if __name__ == '__main__':
 
                     for txt, meta, index in tqdm(pool.imap(func = process_doc_partial,
                                                       iterable = enumerate(ds_extdata),
-                                                      chunksize = 1), total = dataset_index_max):
+                                                      chunksize = 1),
+                                                total = dataset_index_max,
+                                                smoothing=0.01):
 
                         name = meta.get("name", meta.get("url", ""))
 
