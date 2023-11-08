@@ -1,45 +1,89 @@
-# This class takes dataset and returns indices of documents to be
-# removed (duplicated copies) using clustering upon text length and comparing text to find exact duplicates
+"""
+Deduplicator Module
+
+This module provides the Deduplicator class, an entity responsible for
+checking dataset content - duplications and length.
+
+Classes:
+- Deduplicator: Got functions for finding duplicates and length of dataset.
+
+Dependencies:
+- pandas: Provides dataframe and algorithms for finding duplicated documents.
+- tqdm: Provides formatted progress bar.
+- common.functions: Provides 'log' function (based on 'rich' library) for formatted logs.
+
+"""
 import pandas as pd
-import progressbar
+from tqdm import tqdm
 from common.functions import log
 
+
 class Deduplicator:
-    def __init__(self, ds):
-        self.df = self._get_data(ds)
-        mask = (
-            self.df['characters'].duplicated()  # most probably 1:1 duplicates have the same number of characters
+    """
+    Represents the Deduplicator class, an entity responsible for
+    checking dataset content - duplications and length.
+    """
+
+    @staticmethod
+    def get_duplicates(dataset_obj, dedup_out_flag: bool = False, duplicates_file: str = 'duplicates.csv') -> tuple[set, int]:
+        """
+        Generates a list (set) of documents indexes that are duplicates and qualify for deletion.
+        The function compares texts based on their hash representation in SHA256 space.
+
+        :param dataset_obj: SpeakleashDataset object (dataset).
+
+        :return: A tuple containing a set of documents indexes that are duplicates,
+                and total number of documents in dataset (int).
+        """
+        log("Gathering documents data...", "INFO")
+
+        import hashlib
+
+        frame = pd.DataFrame(
+            [
+                {
+                    "text": hashlib.sha256(txt.encode("utf-8")).hexdigest(),
+                    "characters": len(txt),
+                    "url": meta.get("url", meta.get("name", "-")),
+                }
+                for txt, meta in tqdm(dataset_obj.ext_data)
+            ]
         )
-        self.df = self.df[mask]  
-        self.chunks = self._get_chunks(self.df)  # grouping text content into chunks of the same length
-        self.dup_list = (self._get_duplicates(self.chunks))  # final result
+
+        log("Getting duplicated documents...", "INFO")
+        frame["is_duplicated"] = frame.duplicated(subset=["text"])
+
+        if dedup_out_flag:
+            frame["non_unique"] = frame.duplicated(subset=["text"], keep=False)
+            kappa = (frame[frame["non_unique"] == True].groupby("characters").apply(pd.DataFrame))
+            kappa.to_csv(
+                duplicates_file,
+                sep="\t",
+                header=True,
+                index=True,
+                encoding="utf-8",
+            )
+
+        dup_list = set(frame[frame["is_duplicated"] == True].index)
+        index_max = frame.index[-1] + 1
+        log(f"Duplicated docs: {len(dup_list)}", "INFO")
+
+        return dup_list, index_max
 
     @staticmethod
-    def _get_data(ds):
-        log("Gathering documents data...", "INFO")      
-        
-        # Using a list comprehension to create the data for dataframe
-        data = [{'text': txt, 'characters': meta.get('characters', meta.get('length', len(txt)))} for txt, meta in ds]
-        
-        # Directly creating the dataframe from the data
-        frame = pd.DataFrame(data)
-        return frame
+    def get_length(dataset_obj) -> int:
+        """
+        Retrieves total number of documents in dataset (int).
 
-    @staticmethod
-    def _get_chunks(df):  # function grouping text content into chunks of the same length
-        log("Chunking documents...", "INFO") 
-        chunks = [group for _, group in df.groupby('characters')]
-        return chunks
+        :param dataset_obj: SpeakleashDataset object (dataset).
 
-    @staticmethod
-    def _get_duplicates(chunks):
-        dup_list = []
-        log("Getting duplicated documents...", "INFO") 
-        with progressbar.ProgressBar(max_value=len(chunks)) as bar:  # monitoring the progress
-           for i, chunk in zip(range(len(chunks)), chunks):  # iterating through each chunk
-               # sorting - to eliminate sets of the same values easily
-                # removing the first entry, because we need to keep one entry for each (multi-)duplicated value
-                dup_list.extend(sorted(chunk[chunk.duplicated(subset='text')].index)[1:])
-                bar.update(i)
-        return set(dup_list)
-    
+        :return: Total number of documents in dataset (int).
+        """
+        log("Gathering documents data...", "INFO")
+        index_max = 0
+
+        for x in tqdm(dataset_obj.ext_data):
+            index_max += 1
+
+        log(f"Documents in [{dataset_obj.name}] dataset: {index_max}", "INFO")
+        return index_max
