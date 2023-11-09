@@ -37,7 +37,7 @@ The script accepts the following command-line arguments:
 
 ### `--name`
 
-- Use this argument to specify the name of the dataset.
+- Use this argument to specify the name of the dataset - available datasets are listed on the dashboard: https://speakleash.org/dashboard/
 - This argument requires a string value representing the name of the dataset or list of strings separated by space
 - If this argument is omitted, the script will generate samples or calculate metrics for all available datasets.
 - Example usage: `python main.py --name my_dataset1 my_dataset2`
