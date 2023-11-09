@@ -141,7 +141,7 @@ if __name__ == '__main__':
             logging.info("------------------------------------------------")
             logging.info(f"Starting postprocesor on dataset: {dataset.name}")
 
-            log("Processing dataset: " + dataset.name, "INFO")
+            log("Processing dataset: [red]" + dataset.name + "[/red]", "INFO")
 
             stats = {'documents': 0}
             manifest = dataset.manifest
