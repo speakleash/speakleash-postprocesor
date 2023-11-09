@@ -15,9 +15,9 @@ warnings.filterwarnings('ignore')           # Disable warnings from 'textstat' l
 class Analyzer(object):
 
     AVG_METRICS_DEF = ['avg_word_length', 'avg_sentence_length', 'noun_ratio', 'verb_ratio', 'adj_ratio', 'lexical_density', 'gunning_fog']
-    MAX_TEXT_PART = 1024 * 1024 # Max text chunk part 
+    MAX_TEXT_PART = 1024 * 1024     # Max text chunk part 
     CAMEL_CASE_PATTERN = re.compile(r"\b[a-ząęćłńóśżź]+[A-ZĄĘĆŁŃÓŚŻŹ]+[a-ząęćłńóśżź]+[a-ząęćłńóśżźA-ZĄĘĆŁŃÓŚŻŹ]*\b")
-    OBSOLETE_KEYS = ['length'] # A list of obsolete keys to remove from new meta
+    OBSOLETE_KEYS = ['length']      # A list of obsolete keys to remove from new meta
 
     def __init__(self, txt, meta, nlp, index, metrics=True, quality_metrics=True, lang_detect = True):
         textstat.set_lang('pl')

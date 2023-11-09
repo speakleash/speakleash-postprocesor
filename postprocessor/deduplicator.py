@@ -8,10 +8,13 @@ Classes:
 - Deduplicator: Got functions for finding duplicates and length of dataset.
 
 Dependencies:
+- hashlib: Provides hashing functions.
 - pandas: Provides dataframe and algorithms for finding duplicated documents.
 - tqdm: Provides formatted progress bar.
 - postprocessor.utils: Provides 'log' function (based on 'rich' library) for formatted logs.
 """
+import hashlib
+
 import pandas as pd
 from tqdm import tqdm
 from postprocessor.utils import log
@@ -34,8 +37,6 @@ class Deduplicator:
                 and total number of documents in dataset (int).
         """
         log("Gathering documents data...", "INFO")
-
-        import hashlib
 
         frame = pd.DataFrame(
             [

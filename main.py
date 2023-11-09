@@ -19,6 +19,8 @@ from postprocessor.deduplicator import Deduplicator
 from postprocessor.analyzer import Analyzer
 
 
+# TODO: Typehints and function description could be useful.
+
 class MetricsAction(argparse.Action):
     def __call__(self, parser, namespace, values, option_string=None):
         setattr(namespace, self.dest, values if values else ['stats', 'quality', 'lang', 'dedup'])
@@ -38,6 +40,7 @@ def initialize_worker():
 
 def generate_sample(dataset, sample_dir, samples = None):
     if not samples:
+        #TODO: Stop after 5 iterations
         samples = [{"text": txt, "meta": meta} for (txt, meta) in dataset.ext_data][:5]
     with open(os.path.join(sample_dir, dataset.name + ".sample"), "w", encoding="utf-8") as f:
         json.dump(samples, f, ensure_ascii=False, indent=4)
@@ -96,13 +99,11 @@ if __name__ == '__main__':
                                       quality=get_quality, lang=get_lang)
         maxtasksperchild = 2500 if get_metrics else 100000
 
-    if args.sample:
-        if not os.path.exists(sample_dir):
-            os.makedirs(sample_dir)
+    if args.sample and not os.path.exists(sample_dir):
+        os.makedirs(sample_dir)
 
-    if args.dedup_out:
-        if not os.path.exists(dedup_dir):
-            os.makedirs(dedup_dir)
+    if args.dedup_out and not os.path.exists(dedup_dir):
+        os.makedirs(dedup_dir)
 
     if not os.path.exists(logs_dir):
         os.makedirs(logs_dir)
@@ -193,7 +194,7 @@ if __name__ == '__main__':
                         if txt and len(txt) > MIN_TXT_LENGTH and meta['words'] > 0:
 
                             # Check for document language
-                            if get_lang and meta['language']['lang'] != 'pl':
+                            if get_lang and meta['language']['lang'].lower() != 'pl':
                                 logging.warning(f"Removed non 'pl' document : {name} | meta: {meta['language']}")
                                 continue
 
@@ -281,6 +282,7 @@ if __name__ == '__main__':
                 shutil.rmtree(TEMP_DATA)
 
             log(f"Finished processing dataset: {dataset.name}", "INFO")
+            log("++++++++++++++++++++++++++++++++++++++++++++++++", "INFO")
             logging.info(f"Finished processing dataset: {dataset.name}")
             logging.info("++++++++++++++++++++++++++++++++++++++++++++++++")
 
