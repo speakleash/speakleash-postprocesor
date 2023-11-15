@@ -53,7 +53,7 @@ The script accepts the following command-line arguments:
 - Use this argument to calculate all available metrics for the dataset.
 - This argument accepts an additional values [stats quality lang dedup]. If additional values are specified only selected metrics are counted.
 - Example usage: `python main.py --metrics stats`
-- Example usage: `python main.py --metrics stats quality dedup`
+- Example usage: `python main.py --metrics stats quality lang dedup` (the same as `python main.py --metrics` )
 
 ### `--processes`
 
