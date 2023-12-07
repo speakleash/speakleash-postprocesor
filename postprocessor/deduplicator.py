@@ -41,7 +41,7 @@ class Deduplicator:
         frame = pd.DataFrame(
             [
                 {
-                    "text": hashlib.sha256(txt.encode("utf-8")).hexdigest(),
+                    "text": Deduplicator.try_or(txt=txt),
                     "characters": len(txt),
                     "url": meta.get("url", meta.get("name", "-")),
                 }
@@ -68,6 +68,13 @@ class Deduplicator:
         log(f"Duplicated docs: {len(dup_list)}", "INFO")
 
         return dup_list, index_max
+    
+    @staticmethod
+    def try_or(txt: str, expected_exc=(Exception,)):
+        try:
+            return hashlib.sha256(txt.encode("utf-8", errors='ignore')).hexdigest()
+        except expected_exc:
+            return hashlib.sha256(txt.encode("latin1")).hexdigest()
 
     @staticmethod
     def get_length(dataset_obj) -> int:
