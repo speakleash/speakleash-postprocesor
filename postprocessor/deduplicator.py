@@ -74,7 +74,8 @@ class Deduplicator:
         try:
             return hashlib.sha256(txt.encode("utf-8", errors='ignore')).hexdigest()
         except expected_exc:
-            return hashlib.sha256(txt.encode("latin1")).hexdigest()
+            print(f"TEXT: {txt}")
+            pass
 
     @staticmethod
     def get_length(dataset_obj) -> int:

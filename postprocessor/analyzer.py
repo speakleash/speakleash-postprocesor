@@ -19,9 +19,9 @@ class Analyzer(object):
     CAMEL_CASE_PATTERN = re.compile(r"\b[a-ząęćłńóśżź]+[A-ZĄĘĆŁŃÓŚŻŹ]+[a-ząęćłńóśżź]+[a-ząęćłńóśżźA-ZĄĘĆŁŃÓŚŻŹ]*\b")
     OBSOLETE_KEYS = ['length']      # A list of obsolete keys to remove from new meta
 
-    def __init__(self, txt, meta, nlp, index, metrics=True, quality_metrics=True, lang_detect = True):
+    def __init__(self, txt: str, meta, nlp, index, metrics=True, quality_metrics=True, lang_detect = True):
         textstat.set_lang('pl')
-        self.txt = txt
+        self.txt = txt.encode('utf-8', 'ignore').decode()
         self.meta = meta
         self.nlp = nlp
         self.nlp.max_length = len(txt) + 100
