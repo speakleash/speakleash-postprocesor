@@ -159,6 +159,7 @@ if __name__ == '__main__':
                 dataset_index_max = 0
 
                 # Get duplicates or only dataset length
+                # TODO: Check EXT_DATA generator -> passing object to function
                 if get_duplicates:
                     duplicate_indices, dataset_index_max = Deduplicator.get_duplicates(dataset, args.dedup_out,
                                                             duplicates_file = os.path.join(dedup_dir, dataset.name + '_Non-Unique_Texts.csv'))
@@ -172,6 +173,7 @@ if __name__ == '__main__':
                 # Init Archive for final dataset file
                 ar = Archive(os.path.join(base_dir, TEMP_DATA))
 
+                # TODO: Check EXT_DATA generator
                 ds_extdata = dataset.ext_data
 
                 with Pool(initializer = initialize_worker, processes = args.processes,
