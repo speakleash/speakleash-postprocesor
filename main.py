@@ -47,9 +47,8 @@ def generate_sample(dataset, sample_dir, samples = None):
 
 
 if __name__ == '__main__':
-    set_start_method("spawn")
-
-    VERSION = "0.1.6"
+    
+    VERSION = "0.1.7"
 
     base_dir = os.path.dirname(__file__)
     output_dir = os.path.join(base_dir, "processing_output")
@@ -97,8 +96,7 @@ if __name__ == '__main__':
         get_duplicates = 'dedup' in args.metrics
         process_doc_partial = partial(process_doc, metrics=get_metrics, 
                                       quality=get_quality, lang=get_lang)
-        maxtasksperchild = 2500 if get_metrics else 100000
-
+        
     if args.sample and not os.path.exists(sample_dir):
         os.makedirs(sample_dir)
 
@@ -164,7 +162,10 @@ if __name__ == '__main__':
                     duplicate_indices, dataset_index_max = Deduplicator.get_duplicates(dataset, args.dedup_out,
                                                             duplicates_file = os.path.join(dedup_dir, dataset.name + '_Non-Unique_Texts.csv'))
                 else:
-                    dataset_index_max = Deduplicator.get_length(dataset)
+                    if manifest.get('stats', {}).get('documents', None):
+                        dataset_index_max = manifest['stats']['documents']
+                    else:
+                        dataset_index_max = Deduplicator.get_length(dataset)
 
                 # Get Quality dictionary
                 if get_quality or manifest.get('stats',{}).get('quality',None):
@@ -176,8 +177,7 @@ if __name__ == '__main__':
                 # TODO: Check EXT_DATA generator
                 ds_extdata = dataset.ext_data
 
-                with Pool(initializer = initialize_worker, processes = args.processes,
-                          maxtasksperchild = maxtasksperchild) as pool:
+                with Pool(initializer = initialize_worker, processes = args.processes) as pool:
 
                     for txt, meta, index in tqdm(pool.imap(func = process_doc_partial,
                                                       iterable = enumerate(ds_extdata),
